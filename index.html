@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Weather Dashboard</title>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@300;400;600;700&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/weather-icons/2.0.12/css/weather-icons.min.css"/>
+  <style>
+    :root {
+      --bg-gradient: linear-gradient(120deg, #a1c4fd, #c2e9fb);
+      --glass: rgba(255, 255, 255, 0.15);
+      --border: rgba(255, 255, 255, 0.3);
+      --shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+      --text-dark: #2d3436;
+      --text-light: #636e72;
+      --accent: #0984e3;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Nunito', sans-serif;
+      background: var(--bg-gradient);
+      color: var(--text-dark);
+      min-height: 100vh;
+      padding: 2rem;
+    }
+
+    .container {
+      max-width: 1000px;
+      margin: auto;
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+
+    .header h1 {
+      font-size: 3rem;
+      color: white;
+      font-weight: 700;
+    }
+
+    .header p {
+      font-size: 1.2rem;
+      color: #f1f1f1;
+    }
+
+    .search-section {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-bottom: 3rem;
+    }
+
+    .search-container {
+      display: flex;
+      gap: 1rem;
+      width: 100%;
+      max-width: 500px;
+    }
+
+    .search-input {
+      flex: 1;
+      padding: 1rem 1.5rem;
+      font-size: 1rem;
+      border: none;
+      border-radius: 12px;
+      outline: none;
+      background: white;
+      box-shadow: var(--shadow);
+    }
+
+    .search-btn {
+      background: var(--accent);
+      color: white;
+      padding: 1rem 1.5rem;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: 0.3s;
+    }
+
+    .search-btn:hover {
+      background: #0c6fde;
+    }
+
+    .error-message {
+      margin-top: 1rem;
+      background: #ff6b6b;
+      color: white;
+      padding: 0.75rem 1rem;
+      border-radius: 8px;
+      display: none;
+    }
+
+    .loading {
+      text-align: center;
+      margin: 2rem 0;
+      display: none;
+    }
+
+    .loading-spinner {
+      border: 5px solid #f3f3f3;
+      border-top: 5px solid var(--accent);
+      border-radius: 50%;
+      width: 50px;
+      height: 50px;
+      animation: spin 1s linear infinite;
+      margin: auto;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .glass-card {
+      background: var(--glass);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 2rem;
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      transition: transform 0.3s ease;
+    }
+
+    .glass-card:hover {
+      transform: translateY(-5px);
+    }
+
+    .current-weather h2 {
+      font-size: 2rem;
+      margin-bottom: 0.5rem;
+      color: white;
+    }
+
+    .weather-icon {
+      font-size: 4rem;
+      color: var(--accent);
+      margin: 1rem 0;
+    }
+
+    .temp {
+      font-size: 2.5rem;
+      font-weight: bold;
+      color: white;
+    }
+
+    .description {
+      text-transform: capitalize;
+      font-size: 1.2rem;
+      color: #dfe6e9;
+    }
+
+    .details {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      margin-top: 1rem;
+      color: white;
+    }
+
+    .detail-item {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex: 1 1 200px;
+    }
+
+    .weather-cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 1.5rem;
+      margin-top: 2rem;
+    }
+
+    @media (max-width: 600px) {
+      .search-container {
+        flex-direction: column;
+      }
+
+      .search-btn, .search-input {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1>Weather Dashboard</h1>
+    <p>Check real-time weather and forecasts around the world</p>
+  </div>
+
+  <div class="search-section">
+    <div class="search-container">
+      <input type="text" class="search-input" placeholder="Enter city name" id="cityInput"/>
+      <button class="search-btn" onclick="fetchWeather()">Search</button>
+    </div>
+    <div id="errorMessage" class="error-message"></div>
+  </div>
+
+  <div class="loading" id="loading">
+    <div class="loading-spinner"></div>
+    <p style="color: white;">Loading weather data...</p>
+  </div>
+
+  <div class="glass-card current-weather" id="currentWeather"></div>
+
+  <div class="weather-cards" id="forecast"></div>
+</div>
+
+<script>
+  const API_KEY = '478556e8b5ce5ff94824a9c24ca539c8';
+  const BASE_URL = 'https://api.openweathermap.org/data/2.5';
+
+  async function fetchWeather() {
+    const cityInput = document.getElementById('cityInput');
+    const errorMessage = document.getElementById('errorMessage');
+    const loading = document.getElementById('loading');
+    const forecast = document.getElementById('forecast');
+    const currentWeather = document.getElementById('currentWeather');
+
+    if (!cityInput.value.trim()) {
+      showError('Please enter a city name');
+      return;
+    }
+
+    try {
+      loading.style.display = 'block';
+      errorMessage.style.display = 'none';
+      forecast.innerHTML = '';
+      currentWeather.innerHTML = '';
+
+      const currentRes = await fetch(`${BASE_URL}/weather?q=${cityInput.value}&units=metric&appid=${API_KEY}`);
+      const forecastRes = await fetch(`${BASE_URL}/forecast?q=${cityInput.value}&units=metric&appid=${API_KEY}`);
+
+      if (!currentRes.ok || !forecastRes.ok) throw new Error('City not found');
+
+      const currentData = await currentRes.json();
+      const forecastData = await forecastRes.json();
+
+      displayCurrentWeather(currentData);
+      displayForecast(forecastData);
+    } catch (error) {
+      showError('Failed to fetch weather data. Try again.');
+    } finally {
+      loading.style.display = 'none';
+    }
+  }
+
+  function displayCurrentWeather(data) {
+    const container = document.getElementById('currentWeather');
+    const date = new Date();
+
+    container.innerHTML = `
+      <h2>${data.name}, ${data.sys.country}</h2>
+      <p>${date.toDateString()}</p>
+      <i class="wi wi-owm-${data.weather[0].id} weather-icon"></i>
+      <div class="temp">${Math.round(data.main.temp)}°C</div>
+      <div class="description">${data.weather[0].description}</div>
+      <div class="details">
+        <div class="detail-item"><i class="wi wi-humidity"></i> Humidity: ${data.main.humidity}%</div>
+        <div class="detail-item"><i class="wi wi-strong-wind"></i> Wind: ${data.wind.speed} m/s</div>
+        <div class="detail-item"><i class="wi wi-thermometer"></i> Feels Like: ${Math.round(data.main.feels_like)}°C</div>
+        <div class="detail-item"><i class="wi wi-barometer"></i> Pressure: ${data.main.pressure} hPa</div>
+      </div>
+    `;
+  }
+
+  function displayForecast(data) {
+    const forecast = document.getElementById('forecast');
+    const days = data.list.filter(item => item.dt_txt.includes("12:00:00")).slice(0, 5);
+
+    forecast.innerHTML = days.map(day => `
+      <div class="glass-card">
+        <h3>${new Date(day.dt * 1000).toLocaleDateString('en-US', {
+          weekday: 'short', month: 'short', day: 'numeric'
+        })}</h3>
+        <i class="wi wi-owm-${day.weather[0].id} weather-icon"></i>
+        <div class="temp">${Math.round(day.main.temp)}°C</div>
+        <div class="description">${day.weather[0].description}</div>
+        <div class="details">
+          <div class="detail-item"><i class="wi wi-humidity"></i> Humidity: ${day.main.humidity}%</div>
+          <div class="detail-item"><i class="wi wi-strong-wind"></i> Wind: ${day.wind.speed} m/s</div>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  function showError(msg) {
+    const errorMessage = document.getElementById('errorMessage');
+    errorMessage.textContent = msg;
+    errorMessage.style.display = 'block';
+    setTimeout(() => {
+      errorMessage.style.display = 'none';
+    }, 3000);
+  }
+
+  document.getElementById('cityInput').addEventListener('keypress', e => {
+    if (e.key === 'Enter') fetchWeather();
+  });
+</script>
+</body>
+</html>
